@@ -1,13 +1,17 @@
+import { hostname } from 'node:os'
 import * as vscode from 'vscode'
 import { dataOf, titleOf, withData } from './ask'
 import { handler, lastSpeed, participantID, pick } from './participant'
 import { ToskarChatProvider } from './provider'
-import { Toskar } from './toskar'
+import { hostPort, readCertificate, shortOf, type Pin } from './pin'
+import { pair, Toskar } from './toskar'
 
 const keySecret = 'toskar.apiKey'
+/** Certificates pinned when connecting, by Toskar's address. */
+const pinsState = 'toskar.pins'
 
 export function activate(context: vscode.ExtensionContext): void {
-  const connect = async () => new Toskar(url(), await context.secrets.get(keySecret))
+  const connect = async () => new Toskar(url(), await context.secrets.get(keySecret), pinFor(context, url()))
   const provider = new ToskarChatProvider(connect)
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90)
   status.command = 'toskar.openModels'
@@ -34,6 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.lm.registerLanguageModelChatProvider('toskar', provider),
     vscode.commands.registerCommand('toskar.askAboutThis', () => askAboutThis(connect)),
+    vscode.commands.registerCommand('toskar.connect', () => connectComputer(context, refresh)),
     status,
     vscode.commands.registerCommand('toskar.manage', () => manage(context, refresh)),
     vscode.commands.registerCommand('toskar.setApiKey', () => setKey(context, refresh)),
@@ -125,19 +130,82 @@ async function askAboutThis(connect: () => Promise<Toskar>): Promise<void> {
 async function manage(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {
   const pick = await vscode.window.showQuickPick(
     [
+      { label: 'Connect to Toskar on another computer', description: 'with the code from Connect a device', id: 'connect' },
       { label: 'Where Toskar runs', description: url(), id: 'url' },
       { label: 'API key', description: (await context.secrets.get(keySecret)) ? 'set' : 'not set: none is needed on this computer', id: 'key' },
       { label: "Open Toskar's models", id: 'models' },
     ],
     { title: 'Toskar' },
   )
-  if (pick?.id === 'url') {
+  if (pick?.id === 'connect') {
+    await connectComputer(context, refresh)
+  } else if (pick?.id === 'url') {
     const next = await vscode.window.showInputBox({ title: 'Where Toskar runs', value: url(), prompt: 'Its address, such as http://127.0.0.1:7331 for this computer' })
     if (next) await vscode.workspace.getConfiguration('toskar').update('url', next, vscode.ConfigurationTarget.Global)
   } else if (pick?.id === 'key') {
     await setKey(context, refresh)
   } else if (pick?.id === 'models') {
     await vscode.commands.executeCommand('toskar.openModels')
+  }
+}
+
+function pinFor(context: vscode.ExtensionContext, address: string): Pin | undefined {
+  if (!address.startsWith('https:')) return undefined
+  return context.globalState.get<Record<string, Pin>>(pinsState, {})[origin(address)]
+}
+
+function origin(address: string): string {
+  try {
+    return new URL(address).origin
+  } catch {
+    return address
+  }
+}
+
+/**
+ * Connects to Toskar on another computer like a device (toskar-core#960):
+ * its address and the code from Connect a device, with its certificate
+ * pinned. An Admin's code gives the key raw access, for the model picker.
+ */
+async function connectComputer(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {
+  const title = 'Connect to Toskar on another computer'
+  const address = await vscode.window.showInputBox({
+    title,
+    prompt: "On that computer, open Toskar's API Access, then Devices, and choose Connect a device. Enter the address it shows.",
+    placeHolder: '192.168.1.20:7331',
+    ignoreFocusOut: true,
+    validateInput: (v) => (hostPort(v) ? undefined : 'An address such as 192.168.1.20:7331'),
+  })
+  const where = address ? hostPort(address) : undefined
+  if (!where) return
+  let pin: Pin
+  try {
+    pin = await readCertificate(where.host, where.port)
+  } catch {
+    void vscode.window.showWarningMessage(`Toskar isn't answering at ${where.host}:${where.port}. Check the address, and that Connect a device is open on that computer.`)
+    return
+  }
+  const code = await vscode.window.showInputBox({
+    title,
+    prompt: `Enter the 6-digit code Toskar shows. Its certificate starts ${shortOf(pin.fingerprint)}: check that Toskar shows the same.`,
+    ignoreFocusOut: true,
+    validateInput: (v) => (/^\d{6}$/.test(v.replace(/\s/g, '')) ? undefined : 'The 6 digits Toskar shows'),
+  })
+  if (!code) return
+  const base = `https://${where.host.includes(':') ? `[${where.host}]` : where.host}:${where.port}`
+  try {
+    const paired = await pair(base, pin, code.replace(/\s/g, ''), `${vscode.env.appName} on ${hostname()}`.slice(0, 60))
+    await context.secrets.store(keySecret, paired.api_key)
+    await context.globalState.update(pinsState, { ...context.globalState.get<Record<string, Pin>>(pinsState, {}), [origin(base)]: pin })
+    await vscode.workspace.getConfiguration('toskar').update('url', base, vscode.ConfigurationTarget.Global)
+    refresh()
+    void vscode.window.showInformationMessage(
+      paired.key.permissions?.raw
+        ? `Connected to Toskar on ${where.host}. Its models are in Copilot Chat's model picker, and @toskar answers.`
+        : `Connected to Toskar on ${where.host}, and @toskar answers. For its models in the model picker, connect again with a code an Admin shows.`,
+    )
+  } catch (err) {
+    void vscode.window.showWarningMessage(`Toskar: ${(err as Error).message}`)
   }
 }
 
