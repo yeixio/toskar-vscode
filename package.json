@@ -1,0 +1,98 @@
+{
+  "name": "toskar",
+  "displayName": "Toskar",
+  "description": "Your local AI in VS Code: the models on your Toskar computer in Copilot Chat's model picker, with their tools and agent mode.",
+  "version": "0.1.0",
+  "publisher": "yeix",
+  "license": "Apache-2.0",
+  "icon": "images/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yeixio/toskar-vscode"
+  },
+  "homepage": "https://toskar.ai",
+  "bugs": {
+    "url": "https://github.com/yeixio/toskar-vscode/issues"
+  },
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "keywords": [
+    "local model",
+    "local llm",
+    "llama.cpp",
+    "copilot",
+    "private ai",
+    "toskar"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "languageModelChatProviders": [
+      {
+        "vendor": "toskar",
+        "displayName": "Toskar",
+        "managementCommand": "toskar.manage"
+      }
+    ],
+    "commands": [
+      {
+        "command": "toskar.manage",
+        "title": "Manage",
+        "category": "Toskar"
+      },
+      {
+        "command": "toskar.setApiKey",
+        "title": "Set API Key",
+        "category": "Toskar"
+      },
+      {
+        "command": "toskar.openModels",
+        "title": "Open Models",
+        "category": "Toskar"
+      },
+      {
+        "command": "toskar.refresh",
+        "title": "Refresh Models",
+        "category": "Toskar"
+      }
+    ],
+    "configuration": {
+      "title": "Toskar",
+      "properties": {
+        "toskar.url": {
+          "type": "string",
+          "default": "http://127.0.0.1:7331",
+          "markdownDescription": "Where Toskar runs: this computer by default, or another one's address. A computer other than this one needs an API key with raw access (**Toskar: Set API Key**)."
+        },
+        "toskar.statusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the model Toskar has loaded in the status bar."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=out/extension.js --sourcemap",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "pnpm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@types/vscode": "~1.104.0",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.10",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "pnpm@10.34.6"
+}
