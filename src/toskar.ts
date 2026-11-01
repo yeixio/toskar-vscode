@@ -2,6 +2,9 @@
 // (toskar-core#843), and its assistant's chats, which @toskar uses.
 // Nothing here imports vscode.
 
+import { fetch as pinnedFetch, type Dispatcher } from 'undici'
+import { pinnedAgent, type Pin } from './pin'
+
 /** A model as Toskar's /api/v1/models lists it; only what's read here. */
 export interface ToskarModel {
   id: string
@@ -33,10 +36,16 @@ export class ToskarError extends Error {
 }
 
 export class Toskar {
+  private readonly agent?: Dispatcher
+
+  /** pin is Toskar's certificate, when it was connected to over HTTPS. */
   constructor(
     readonly url: string,
     private readonly key: string | undefined,
-  ) {}
+    pin?: Pin,
+  ) {
+    if (pin) this.agent = pinnedAgent(pin)
+  }
 
   private headers(json = false): Record<string, string> {
     const h: Record<string, string> = {}
@@ -52,10 +61,17 @@ export class Toskar {
 
   private async fetch(path: string, init: RequestInit): Promise<Response> {
     let resp: Response
+    const url = this.url.replace(/\/+$/, '') + path
     try {
-      resp = await fetch(this.url.replace(/\/+$/, '') + path, init)
+      resp = this.agent ? ((await pinnedFetch(url, { ...(init as object), dispatcher: this.agent })) as unknown as Response) : await fetch(url, init)
     } catch (err) {
       if (init.signal?.aborted) throw err
+      // Pinned, any certificate but Toskar's fails here: one another
+      // authority vouches for, or none does.
+      const cause = (err as { cause?: { code?: string; message?: string } }).cause
+      if (this.agent && (/CERT|SELF_SIGNED|UNABLE_TO_VERIFY/.test(cause?.code ?? '') || cause?.message?.includes('certificate changed'))) {
+        throw new ToskarError("Toskar's certificate isn't the one this editor connected with. If Toskar was set up again on that computer, connect again with Toskar: Connect to Another Computer.")
+      }
       throw new ToskarError(`Toskar isn't answering at ${this.url}. Start Toskar, or set where it runs with Toskar: Manage.`)
     }
     if (!resp.ok) throw new ToskarError(await explain(resp), resp.status)
@@ -84,7 +100,8 @@ export class Toskar {
     return resp.body
   }
 
-  private send(path: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+  /** Posts body as JSON. */
+  post(path: string, body: unknown, signal?: AbortSignal): Promise<Response> {
     return this.fetch(path, { method: 'POST', headers: this.headers(true), body: JSON.stringify(body), signal })
   }
 
@@ -93,7 +110,7 @@ export class Toskar {
     const body: Record<string, string> = { title }
     if (profile) body.profile_id = profile
     if (model) body.model_id = model
-    const resp = await this.send('/api/v1/conversations', body, signal)
+    const resp = await this.post('/api/v1/conversations', body, signal)
     return (await resp.json()) as Conversation
   }
 
@@ -102,7 +119,7 @@ export class Toskar {
     const body: Record<string, unknown> = { conversation_id: o.conversationID, message: o.message, stream: true, client: 'editor' }
     if (o.model) body.model_id = o.model
     if (o.profile) body.profile_id = o.profile
-    const resp = await this.send('/api/v1/chat', body, signal)
+    const resp = await this.post('/api/v1/chat', body, signal)
     if (!resp.body) throw new ToskarError('Toskar answered without a stream')
     return resp.body
   }
@@ -119,8 +136,32 @@ export class Toskar {
    * forChat lets it run for the rest of the chat without asking.
    */
   async decide(requestID: string, allow: boolean, forChat = false): Promise<void> {
-    await this.send('/api/v1/tools/decide', { request_id: requestID, allow, allow_session: forChat })
+    await this.post('/api/v1/tools/decide', { request_id: requestID, allow, allow_session: forChat })
   }
+}
+
+/** A key from connecting, as POST /api/v1/devices/pair answers. */
+export interface Paired {
+  api_key: string
+  key: { id: string; name: string; permissions?: { raw?: boolean } }
+  tls_fingerprint?: string
+  tls_short?: string
+}
+
+/**
+ * Connects this editor like a device, with the code Toskar's Connect a
+ * device shows, asking for raw access for the model picker
+ * (toskar-core#960). url is https:// with pin, the certificate read first.
+ */
+export async function pair(url: string, pin: Pin | undefined, code: string, deviceName: string): Promise<Paired> {
+  const toskar = new Toskar(url, undefined, pin)
+  const resp = await toskar.post('/api/v1/devices/pair', { code, device_name: deviceName, raw: true })
+  const paired = (await resp.json()) as Paired
+  // The answer names the certificate too; it must be the one pinned.
+  if (pin && paired.tls_fingerprint && paired.tls_fingerprint !== pin.fingerprint) {
+    throw new ToskarError("Toskar's certificate isn't the one it says it has. Connect on your own network, and check the code on Toskar.")
+  }
+  return paired
 }
 
 /** What @toskar sends with a message: who answers it. */
@@ -154,8 +195,11 @@ async function explain(resp: Response): Promise<string> {
     // Not JSON: the status says enough.
   }
   if (code === 'RAW_NOT_ALLOWED') {
-    return `${message}. In Toskar, open API Access, turn on "Drive models directly, for coding agents" for your key, and set it here with Toskar: Set API Key.`
+    return `${message}. In Toskar, open API Access and turn on "Drive models directly, for coding agents" for this editor's key, or have an Admin show the code when you connect.`
   }
+  // Connecting's own errors say what to do.
+  if (code.startsWith('PAIRING_')) return message.charAt(0).toUpperCase() + message.slice(1) + '.'
+
   if (resp.status === 401) return `${message}. Set your Toskar API key with Toskar: Set API Key.`
   return message
 }

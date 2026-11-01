@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- **Toskar: Connect to Another Computer** connects with the code from Toskar's Connect a device, as a phone does, and pins that computer's certificate. A code an Admin shows gives the key raw access, for the model picker (toskar-core#960).
+
 ## 0.2.1
 
 - **Allow in This Chat** on a tool's approval lets it run for the rest of the @toskar chat without asking, with Toskar 1.12 or later (toskar-core#996).

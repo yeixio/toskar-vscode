@@ -33,10 +33,17 @@ In an editor without Copilot Chat's chat view, **Ask Toskar about This** asks fo
 
 ## Toskar on another computer
 
-Run **Toskar: Manage** and set where Toskar runs, such as `http://192.168.1.20:7331`. Another computer needs an API key:
+Connect the way a phone does, with a code:
 
-1. In Toskar, open **API Access** and create a key. For the model picker, turn on **Drive models directly, for coding agents** in its permissions; only an Admin can. @toskar needs only chat.
-2. Run **Toskar: Set API Key** and paste it. It's kept in VS Code's secret storage.
+1. On the computer Toskar runs on, open Toskar's **API Access**, then **Devices**, and choose **Connect a device**.
+2. In VS Code, run **Toskar: Connect to Another Computer** and enter the address Toskar shows, such as `192.168.1.20:7331`.
+3. Check that the certificate VS Code names, such as `4F2A-9C1B`, is the one Toskar shows, then enter the 6-digit code.
+
+VS Code gets a key of its own, kept in its secret storage, and listed in Toskar's Devices, where you can disconnect it. It talks to Toskar over HTTPS and trusts only that computer's certificate from then on.
+
+The model picker needs raw access, which lets an agent drive a model directly. VS Code gets it when an Admin or the Owner showed the code. Otherwise @toskar works, and the model picker asks you to connect again with an Admin's code.
+
+You can also use a key from **API Access** instead: set where Toskar runs with **Toskar: Manage**, and the key with **Toskar: Set API Key**. For the model picker, turn on **Drive models directly, for coding agents** in its permissions.
 
 ## How it works
 
@@ -56,6 +63,7 @@ Run **Toskar: Manage** and set where Toskar runs, such as `http://192.168.1.20:7
 ## Commands
 
 - **Ask Toskar about This**: the selection, or the file, for the next @toskar message.
+- **Toskar: Connect to Another Computer**: connect with the code from Connect a device.
 - **Toskar: Manage**: where Toskar runs, the API key, and Toskar's models. Copilot's model manager opens this too.
 - **Toskar: Set API Key**
 - **Toskar: Refresh Models**: list the models again after installing one in Toskar.

@@ -2,7 +2,7 @@
   "name": "toskar",
   "displayName": "Toskar",
   "description": "Your local AI in VS Code: the models on your Toskar computer in Copilot Chat's model picker, and @toskar, Toskar's assistant, for questions about your code.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "yeix",
   "license": "Apache-2.0",
   "icon": "images/icon.png",
@@ -52,6 +52,11 @@
         "category": "Toskar"
       },
       {
+        "command": "toskar.connect",
+        "title": "Connect to Another Computer",
+        "category": "Toskar"
+      },
+      {
         "command": "toskar.setApiKey",
         "title": "Set API Key",
         "category": "Toskar"
@@ -73,7 +78,7 @@
         "toskar.url": {
           "type": "string",
           "default": "http://127.0.0.1:7331",
-          "markdownDescription": "Where Toskar runs: this computer by default, or another one's address. A computer other than this one needs an API key with raw access (**Toskar: Set API Key**)."
+          "markdownDescription": "Where Toskar runs: this computer by default. For another computer, use **Toskar: Connect to Another Computer**, which sets this."
         },
         "toskar.statusBar": {
           "type": "boolean",
@@ -125,5 +130,8 @@
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   },
-  "packageManager": "pnpm@10.34.6"
+  "packageManager": "pnpm@10.34.6",
+  "dependencies": {
+    "undici": "6.29.0"
+  }
 }
