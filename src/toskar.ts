@@ -1,5 +1,6 @@
-// Talking to Toskar: its models, the one running, and a raw chat
-// (toskar-core#843). Nothing here imports vscode.
+// Talking to Toskar: its models, the one running, a raw chat
+// (toskar-core#843), and its assistant's chats, which @toskar uses.
+// Nothing here imports vscode.
 
 /** A model as Toskar's /api/v1/models lists it; only what's read here. */
 export interface ToskarModel {
@@ -82,6 +83,60 @@ export class Toskar {
     if (!resp.body) throw new ToskarError('Toskar answered without a stream')
     return resp.body
   }
+
+  private send(path: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+    return this.fetch(path, { method: 'POST', headers: this.headers(true), body: JSON.stringify(body), signal })
+  }
+
+  /** A new chat, which the apps list in History as well. */
+  async createConversation(title: string, profile?: string, model?: string, signal?: AbortSignal): Promise<Conversation> {
+    const body: Record<string, string> = { title }
+    if (profile) body.profile_id = profile
+    if (model) body.model_id = model
+    const resp = await this.send('/api/v1/conversations', body, signal)
+    return (await resp.json()) as Conversation
+  }
+
+  /** Streams Toskar's answer to a message in a chat, as server-sent events. */
+  async ask(o: AskOptions, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+    const body: Record<string, unknown> = { conversation_id: o.conversationID, message: o.message, stream: true, client: 'editor' }
+    if (o.model) body.model_id = o.model
+    if (o.profile) body.profile_id = o.profile
+    const resp = await this.send('/api/v1/chat', body, signal)
+    if (!resp.body) throw new ToskarError('Toskar answered without a stream')
+    return resp.body
+  }
+
+  /** Toskar's events as they happen, such as a tool waiting for a yes. */
+  async events(signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+    const resp = await this.fetch('/api/v1/events', { headers: this.headers(), signal })
+    if (!resp.body) throw new ToskarError('Toskar answered without a stream')
+    return resp.body
+  }
+
+  /** Answers a tool waiting for a yes, as the apps' approval card does. */
+  async decide(requestID: string, allow: boolean): Promise<void> {
+    await this.send('/api/v1/tools/decide', { request_id: requestID, allow })
+  }
+}
+
+/** What @toskar sends with a message: who answers it. */
+export interface AskOptions {
+  conversationID: string
+  message: string
+  model?: string
+  profile?: string
+}
+
+export interface Conversation {
+  id: string
+  title?: string
+}
+
+/** A Toskar event, as /api/v1/events streams them. */
+export interface ToskarEvent {
+  type: string
+  payload?: Record<string, unknown>
 }
 
 /** An error answer, said for a person: Toskar's message, with what to do. */

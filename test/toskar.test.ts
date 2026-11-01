@@ -22,6 +22,13 @@ beforeAll(async () => {
         { id: 'not-here', installed: false },
         { id: 'nomic-embed', installed: true, support_role: 'embedding' },
       ]))
+    } else if (req.url === '/api/v1/conversations') {
+      res.end(JSON.stringify({ id: 'conv1', title: lastBody.title }))
+    } else if (req.url === '/api/v1/chat') {
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.end('event: token\ndata: {"content":"hi"}\n\nevent: done\ndata: {}\n\n')
+    } else if (req.url === '/api/v1/tools/decide') {
+      res.end('{"ok":true}')
     } else if (req.url === '/v1/chat/completions' && lastBody.model === 'raw:locked') {
       res.statusCode = 403
       res.end(JSON.stringify({ error: { code: 'RAW_NOT_ALLOWED', message: "this key can't drive a model directly" } }))
@@ -62,6 +69,18 @@ describe('Toskar', () => {
     expect(err).toBeInstanceOf(ToskarError)
     expect(err.message).toContain('Drive models directly, for coding agents')
     expect(err.status).toBe(403)
+  })
+
+  it("asks Toskar's assistant in a new chat, marked as from an editor", async () => {
+    const toskar = new Toskar(base, undefined)
+    expect(await toskar.createConversation('Why?', 'programming')).toEqual({ id: 'conv1', title: 'Why?' })
+    expect(lastBody).toEqual({ title: 'Why?', profile_id: 'programming' })
+    let text = ''
+    for await (const chunk of (await toskar.ask({ conversationID: 'conv1', message: 'Why?', model: 'qwen2.5-7b-q4' })) as unknown as AsyncIterable<Uint8Array>) text += new TextDecoder().decode(chunk)
+    expect(text).toContain('event: done')
+    expect(lastBody).toEqual({ conversation_id: 'conv1', message: 'Why?', stream: true, client: 'editor', model_id: 'qwen2.5-7b-q4' })
+    await toskar.decide('req1', false)
+    expect(lastBody).toEqual({ request_id: 'req1', allow: false })
   })
 
   it('says Toskar is not answering when nothing listens', async () => {
