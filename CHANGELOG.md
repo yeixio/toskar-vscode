@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- **Allow in This Chat** on a tool's approval lets it run for the rest of the @toskar chat without asking, with Toskar 1.12 or later (toskar-core#996).
+
 ## 0.2.0
 
 - **@toskar** in Copilot Chat: Toskar's assistant, with your profiles, knowledge, and memory, in a Toskar chat the apps list too. Files and selections go with the message as data, and a tool that asks first asks in VS Code (toskar-core#960).

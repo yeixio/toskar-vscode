@@ -80,7 +80,9 @@ describe('Toskar', () => {
     expect(text).toContain('event: done')
     expect(lastBody).toEqual({ conversation_id: 'conv1', message: 'Why?', stream: true, client: 'editor', model_id: 'qwen2.5-7b-q4' })
     await toskar.decide('req1', false)
-    expect(lastBody).toEqual({ request_id: 'req1', allow: false })
+    expect(lastBody).toEqual({ request_id: 'req1', allow: false, allow_session: false })
+    await toskar.decide('req2', true, true)
+    expect(lastBody).toEqual({ request_id: 'req2', allow: true, allow_session: true })
   })
 
   it('says Toskar is not answering when nothing listens', async () => {

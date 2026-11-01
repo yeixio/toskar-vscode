@@ -114,9 +114,12 @@ export class Toskar {
     return resp.body
   }
 
-  /** Answers a tool waiting for a yes, as the apps' approval card does. */
-  async decide(requestID: string, allow: boolean): Promise<void> {
-    await this.send('/api/v1/tools/decide', { request_id: requestID, allow })
+  /**
+   * Answers a tool waiting for a yes, as the apps' approval card does;
+   * forChat lets it run for the rest of the chat without asking.
+   */
+  async decide(requestID: string, allow: boolean, forChat = false): Promise<void> {
+    await this.send('/api/v1/tools/decide', { request_id: requestID, allow, allow_session: forChat })
   }
 }
 

@@ -2,7 +2,7 @@
   "name": "toskar",
   "displayName": "Toskar",
   "description": "Your local AI in VS Code: the models on your Toskar computer in Copilot Chat's model picker, and @toskar, Toskar's assistant, for questions about your code.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "yeix",
   "license": "Apache-2.0",
   "icon": "images/icon.png",

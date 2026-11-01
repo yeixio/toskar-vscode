@@ -27,7 +27,7 @@ The status bar shows the model Toskar has loaded, and how fast @toskar's last an
 
 You can also type `@toskar` in Copilot Chat yourself, and add files or selections with `#`. Follow-up questions in the same chat continue the same Toskar chat, which the apps list in History.
 
-When Toskar's assistant wants a tool that asks first, such as running code, VS Code asks you with what it would run, and on which computer when Toskar is on another one. Choose **Allow**, or close the dialog to refuse.
+When Toskar's assistant wants a tool that asks first, such as running code, VS Code asks you with what it would run, and on which computer when Toskar is on another one. Choose **Allow** for this once, or **Allow in This Chat** to let that tool run for the rest of the chat without asking (Toskar 1.12 or later; earlier versions ask again). Close the dialog to refuse.
 
 In an editor without Copilot Chat's chat view, **Ask Toskar about This** asks for your question, waits for the answer, and opens the chat in Toskar.
 
