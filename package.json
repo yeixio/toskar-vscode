@@ -1,8 +1,8 @@
 {
   "name": "toskar",
   "displayName": "Toskar",
-  "description": "Your local AI in VS Code: the models on your Toskar computer in Copilot Chat's model picker, with their tools and agent mode.",
-  "version": "0.1.0",
+  "description": "Your local AI in VS Code: the models on your Toskar computer in Copilot Chat's model picker, and @toskar, Toskar's assistant, for questions about your code.",
+  "version": "0.2.0",
   "publisher": "yeix",
   "license": "Apache-2.0",
   "icon": "images/icon.png",
@@ -43,6 +43,10 @@
     ],
     "commands": [
       {
+        "command": "toskar.askAboutThis",
+        "title": "Ask Toskar about This"
+      },
+      {
         "command": "toskar.manage",
         "title": "Manage",
         "category": "Toskar"
@@ -75,8 +79,35 @@
           "type": "boolean",
           "default": true,
           "description": "Show the model Toskar has loaded in the status bar."
+        },
+        "toskar.chatModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The model **@toskar** answers with: its id in Toskar, such as `qwen2.5-7b-q4`. Empty lets Toskar choose."
+        },
+        "toskar.profile": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The profile **@toskar** answers as, such as `programming`. Empty uses your default profile in Toskar."
         }
       }
+    },
+    "chatParticipants": [
+      {
+        "id": "toskar.chat",
+        "name": "toskar",
+        "fullName": "Toskar",
+        "description": "Ask Toskar about your code, with its profiles, knowledge, and memory",
+        "isSticky": true
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "toskar.askAboutThis",
+          "group": "toskar@1"
+        }
+      ]
     }
   },
   "scripts": {
