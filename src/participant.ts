@@ -136,7 +136,7 @@ async function watch(toskar: Toskar, events: ReadableStream<Uint8Array>, convers
 /** Asks whether a tool may run, and tells Toskar. */
 async function ask(toskar: Toskar, p: Record<string, unknown>, signal: AbortSignal): Promise<void> {
   const { message, detail } = describeTool(String(p.tool_id ?? 'a tool'), p.args, String(p.reason ?? ''), computerOf(toskar.url))
-  const choice = await vscode.window.showWarningMessage(message, { modal: true, detail }, 'Allow')
+  const choice = await vscode.window.showWarningMessage(message, { modal: true, detail }, 'Allow', 'Allow in This Chat')
   if (signal.aborted) return
-  await toskar.decide(String(p.request_id), choice === 'Allow').catch(() => undefined)
+  await toskar.decide(String(p.request_id), choice !== undefined, choice === 'Allow in This Chat').catch(() => undefined)
 }
