@@ -77,7 +77,12 @@ pnpm test        # the conversion, @toskar's messages, and the Toskar client, wi
 pnpm typecheck
 pnpm build       # out/extension.js
 pnpm package     # toskar-<version>.vsix
+TOSKAR_CORE=/path/to/toskar pnpm test:e2e   # in a real VS Code, against that Toskar with a scripted llama-server
 ```
+
+`test:e2e` downloads its VS Code once, to `~/.cache/toskar-vscode-test`. Copilot Chat isn't part of it, since it needs someone signed in.
+
+To publish, set `version` in `package.json`, add it to `CHANGELOG.md`, and push the tag `v<version>`. The Release workflow checks it, then publishes to the Visual Studio Marketplace and Open VSX, with the `VSCE_PAT` and `OVSX_PAT` secrets.
 
 Press F5 in VS Code with this folder open to run it in an Extension Development Host.
 

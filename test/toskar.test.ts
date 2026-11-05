@@ -20,6 +20,7 @@ beforeAll(async () => {
       res.end(JSON.stringify([
         { id: 'qwen2.5-coder-7b-q4', display_name: 'Qwen 2.5 Coder 7B', installed: true, context_window: 32768, capabilities: { tool_calling: true } },
         { id: 'not-here', installed: false },
+        { id: 'ext:echo', installed: true },
         { id: 'nomic-embed', installed: true, support_role: 'embedding' },
       ]))
     } else if (req.url === '/api/v1/conversations') {

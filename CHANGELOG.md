@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- The model picker no longer lists models on a server Toskar connects to, which it can't drive and which failed with "that model isn't installed on this computer" (toskar-core#960).
+
 ## 0.3.0
 
 - **Toskar: Connect to Another Computer** connects with the code from Toskar's Connect a device, as a phone does, and pins that computer's certificate. A code an Admin shows gives the key raw access, for the model picker (toskar-core#960).
