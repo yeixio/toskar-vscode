@@ -23,7 +23,7 @@ const cases: [string, () => Promise<void>][] = [
   [
     'the extension activates and adds its commands',
     async () => {
-      const extension = vscode.extensions.getExtension('yeix.toskar')
+      const extension = vscode.extensions.getExtension('YeixioLLC.toskar')
       assert.ok(extension, 'not loaded')
       await extension.activate()
       const commands = await vscode.commands.getCommands(true)
