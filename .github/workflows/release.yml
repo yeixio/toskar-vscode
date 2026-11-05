@@ -1,14 +1,16 @@
 name: Release
 
 # A tag v<version> publishes that version to the Visual Studio Marketplace and
-# Open VSX, so Cursor, Windsurf, and VSCodium get it too. VSCE_PAT and OVSX_PAT
-# are the publisher's tokens.
+# Open VSX, so Cursor, Windsurf, and VSCodium get it too. The Marketplace trusts
+# this workflow through the YeixioLLC publisher's Trusted Publishing policy, so
+# it needs no token. OVSX_PAT is the Open VSX publisher's token.
 on:
   push:
     tags: ['v*']
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   publish:
@@ -32,9 +34,7 @@ jobs:
       - run: pnpm test
       - run: pnpm package
       - name: Visual Studio Marketplace
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: pnpm exec vsce publish --no-dependencies --packagePath toskar-*.vsix
+        run: pnpm exec vsce publish --oidc --no-dependencies --packagePath toskar-*.vsix
       - name: Open VSX
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
