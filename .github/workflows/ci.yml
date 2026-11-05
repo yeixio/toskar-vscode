@@ -38,10 +38,11 @@ jobs:
           retention-days: 7
 
   # The extension in a real VS Code, against a real Toskar with a scripted
-  # llama-server. VS Code and each Toskar release are kept in the runner's home,
-  # so a home runner downloads each once.
+  # llama-server. On GitHub's runner, not a home one: VS Code needs a screen and
+  # system libraries the home runners' user can't install, and its download
+  # stays off the home connection.
   vscode:
-    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
@@ -53,7 +54,12 @@ jobs:
           node-version: 22
       - run: pnpm install --frozen-lockfile
       - name: A screen for VS Code
-        run: command -v xvfb-run >/dev/null || sudo apt-get install -y xvfb
+        run: sudo apt-get update -q && sudo apt-get install -y -q xvfb
+      # Only changing the VS Code version in run.ts downloads it again.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/toskar-vscode-test
+          key: vscode-test-${{ hashFiles('test/e2e/run.ts') }}
       - name: The latest Toskar
         env:
           GH_TOKEN: ${{ github.token }}
