@@ -36,3 +36,37 @@ jobs:
           name: toskar-vsix
           path: '*.vsix'
           retention-days: 7
+
+  # The extension in a real VS Code, against a real Toskar with a scripted
+  # llama-server. VS Code and each Toskar release are kept in the runner's home,
+  # so a home runner downloads each once.
+  vscode:
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: A screen for VS Code
+        run: command -v xvfb-run >/dev/null || sudo apt-get install -y xvfb
+      - name: The latest Toskar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$(uname -m)" in aarch64 | arm64) arch=arm64 ;; *) arch=amd64 ;; esac
+          tag="$(gh release view --repo yeixio/toskar-core --json tagName --jq .tagName)"
+          dir="$HOME/.cache/toskar-vscode-test/core/$tag-$arch"
+          if [ ! -x "$dir/toskar" ]; then
+            work="$(mktemp -d)"
+            gh release download "$tag" --repo yeixio/toskar-core --pattern "toskar-*-linux-$arch-headless.tar.gz" --dir "$work"
+            tar -xzf "$work"/*.tar.gz -C "$work"
+            mkdir -p "$(dirname "$dir")"
+            mv "$work"/toskar-*-headless "$dir"
+          fi
+          echo "TOSKAR_CORE=$dir/toskar" >> "$GITHUB_ENV"
+      - run: xvfb-run -a pnpm test:e2e

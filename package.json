@@ -2,7 +2,7 @@
   "name": "toskar",
   "displayName": "Toskar",
   "description": "Your local AI in VS Code: the models on your Toskar computer in Copilot Chat's model picker, and @toskar, Toskar's assistant, for questions about your code.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "yeix",
   "license": "Apache-2.0",
   "icon": "images/icon.png",
@@ -120,13 +120,16 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "package": "vsce package --no-dependencies",
-    "vscode:prepublish": "pnpm run build"
+    "vscode:prepublish": "pnpm run build",
+    "test:e2e": "pnpm run build && esbuild test/e2e/suite.ts --bundle --platform=node --format=cjs --external:vscode --outfile=out/test/suite.js --sourcemap && esbuild test/e2e/run.ts --bundle --platform=node --format=cjs --external:@vscode/test-electron --outfile=out/test/run.js --sourcemap && cp test/e2e/llama-server.js out/test/ && node out/test/run.js"
   },
   "devDependencies": {
     "@types/node": "^20.19.0",
     "@types/vscode": "~1.104.0",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.10",
+    "ovsx": "^1.3.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   },

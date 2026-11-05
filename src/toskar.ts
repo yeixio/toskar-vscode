@@ -78,10 +78,14 @@ export class Toskar {
     return resp
   }
 
-  /** The chat models installed on the computer Toskar runs on. */
+  /**
+   * The chat models installed on the computer Toskar runs on. A model on a
+   * server Toskar connects to (ext:) is listed as installed, but raw mode
+   * can't drive it.
+   */
   async chatModels(signal?: AbortSignal): Promise<ToskarModel[]> {
     const all = await this.get<ToskarModel[]>('/api/v1/models', signal)
-    return all.filter((m) => m.installed && !m.support_role)
+    return all.filter((m) => m.installed && !m.support_role && !m.id.startsWith('ext:'))
   }
 
   async running(signal?: AbortSignal): Promise<RunningModel[]> {
