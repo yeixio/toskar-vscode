@@ -99,6 +99,25 @@ const cases: [string, () => Promise<void>][] = [
       assert.doesNotMatch(answer, /SKILLS-INDEX/)
     },
   ],
+  [
+    '@toskar fences code sent without a question, and sends it once',
+    async () => {
+      const said: string[] = []
+      const stream = { markdown: (s: string) => said.push(s), progress: () => {} } as unknown as vscode.ChatResponseStream
+      const references = [
+        { id: 'vscode.implicit.selection', modelDescription: 'Selection', value: 'SELECTED-CODE' },
+        { id: 'attached', modelDescription: 'Same selection', value: 'SELECTED-CODE' },
+      ]
+      const request = { prompt: '', references } as unknown as vscode.ChatRequest
+      const context = { history: [] } as unknown as vscode.ChatContext
+      const core = process.env.TOSKAR_E2E_CORE as string
+      await handler(async () => new Toskar(core, undefined))(request, context, stream, never)
+      const answer = said.join('')
+      assert.match(answer, /Explain this\./)
+      assert.match(answer, /data to work on/)
+      assert.equal(answer.split('SELECTED-CODE').length - 1, 1, answer)
+    },
+  ],
 ]
 
 export async function run(): Promise<void> {

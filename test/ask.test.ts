@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { attachedByPerson, chatEventOf, computerOf, conversationOf, dataOf, describeTool, EventReader, maxData, titleOf, withData } from '../src/ask'
+import { attachedByPerson, chatEventOf, computerOf, conversationOf, dataOf, describeTool, distinct, EventReader, maxData, promptFor, titleOf, withData } from '../src/ask'
 
 describe('withData', () => {
   it('fences the data as toskar-core askdata does, byte for byte', () => {
@@ -85,5 +85,25 @@ describe('attachedByPerson', () => {
     for (const id of ['vscode.implicit.file', 'vscode.implicit.selection', 'vscode.prompt.file__file:///repo/p.md', 'file:///repo/a.go']) {
       expect(attachedByPerson(id)).toBe(true)
     }
+  })
+})
+
+describe('promptFor', () => {
+  it('asks to explain code sent without a question, so the code stays data', () => {
+    expect(promptFor('', 'code')).toBe('Explain this.')
+    expect(promptFor('  ', 'code')).toBe('Explain this.')
+  })
+  it("leaves a question alone, and doesn't invent one without code", () => {
+    expect(promptFor('Why?', 'code')).toBe('Why?')
+    expect(promptFor('', ' \n')).toBe('')
+  })
+})
+
+describe('distinct', () => {
+  it('keeps the first of each text', () => {
+    const a = { label: 'a.go, lines 1\u20132', text: 'same' }
+    const b = { label: 'a.go', text: 'same' }
+    const c = { label: 'b.go', text: 'other' }
+    expect(distinct([a, b, c])).toEqual([a, c])
   })
 })
