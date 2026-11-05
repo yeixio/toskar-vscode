@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { chatEventOf, computerOf, conversationOf, dataOf, describeTool, EventReader, titleOf, withData, type Snippet } from './ask'
+import { attachedByPerson, chatEventOf, computerOf, conversationOf, dataOf, describeTool, EventReader, titleOf, withData, type Snippet } from './ask'
 import type { Toskar, ToskarEvent } from './toskar'
 
 export const participantID = 'toskar.chat'
@@ -91,6 +91,7 @@ export function handler(connect: () => Promise<Toskar>): vscode.ChatRequestHandl
 async function snippetsOf(refs: readonly vscode.ChatPromptReference[]): Promise<Snippet[]> {
   const out: Snippet[] = []
   for (const r of refs) {
+    if (!attachedByPerson(r.id)) continue
     try {
       if (r.value instanceof vscode.Uri) {
         const doc = await vscode.workspace.openTextDocument(r.value)

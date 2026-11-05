@@ -81,6 +81,24 @@ const cases: [string, () => Promise<void>][] = [
       assert.ok(chats.some((c) => c.title.includes('Name a lake')), JSON.stringify(chats))
     },
   ],
+  [
+    "@toskar doesn't send what VS Code adds for Copilot, and does send what's attached",
+    async () => {
+      const said: string[] = []
+      const stream = { markdown: (s: string) => said.push(s), progress: () => {} } as unknown as vscode.ChatResponseStream
+      const references = [
+        { id: 'vscode.customizations.index', modelDescription: 'Chat customizations index', value: 'SKILLS-INDEX' },
+        { id: 'attached', modelDescription: 'Attached text', value: 'ATTACHED-TEXT' },
+      ]
+      const request = { prompt: 'Name a pond', references } as unknown as vscode.ChatRequest
+      const context = { history: [] } as unknown as vscode.ChatContext
+      const core = process.env.TOSKAR_E2E_CORE as string
+      await handler(async () => new Toskar(core, undefined))(request, context, stream, never)
+      const answer = said.join('')
+      assert.match(answer, /ATTACHED-TEXT/)
+      assert.doesNotMatch(answer, /SKILLS-INDEX/)
+    },
+  ],
 ]
 
 export async function run(): Promise<void> {

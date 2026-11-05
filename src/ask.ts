@@ -152,3 +152,13 @@ export function computerOf(url: string): string {
   if (host === 'localhost' || host === '::1' || /^127\./.test(host)) return ''
   return host
 }
+
+/**
+ * Whether the person attached this, going by a chat reference's id. VS Code also
+ * adds its own: an index of Copilot's skills and agents, and instruction files
+ * such as AGENTS.md. Those are written for Copilot, and sent as data they become
+ * what the assistant answers about.
+ */
+export function attachedByPerson(id: string): boolean {
+  return id !== 'vscode.customizations.index' && !id.startsWith('vscode.instructions.file')
+}
