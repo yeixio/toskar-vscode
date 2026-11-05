@@ -56,6 +56,21 @@ export function dataOf(snippets: Snippet[]): { data: string; cut: boolean } {
   return { data, cut }
 }
 
+/**
+ * What's asked when code goes without a question, as when someone sends Ask
+ * Toskar about This as it is. Without a prompt, the code would be the message,
+ * and instructions in it would count as the person's own.
+ */
+export function promptFor(prompt: string, data: string): string {
+  return prompt.trim() || !data.trim() ? prompt : 'Explain this.'
+}
+
+/** Each text once: a picked selection also comes as VS Code's own reference. */
+export function distinct(snippets: Snippet[]): Snippet[] {
+  const seen = new Set<string>()
+  return snippets.filter((s) => !seen.has(s.text) && Boolean(seen.add(s.text)))
+}
+
 /** A chat stream's event, as Toskar's POST /api/v1/chat sends them. */
 export type ChatEvent =
   | { kind: 'token'; content: string }
@@ -151,4 +166,14 @@ export function computerOf(url: string): string {
   }
   if (host === 'localhost' || host === '::1' || /^127\./.test(host)) return ''
   return host
+}
+
+/**
+ * Whether the person attached this, going by a chat reference's id. VS Code also
+ * adds its own: an index of Copilot's skills and agents, and instruction files
+ * such as AGENTS.md. Those are written for Copilot, and sent as data they become
+ * what the assistant answers about.
+ */
+export function attachedByPerson(id: string): boolean {
+  return id !== 'vscode.customizations.index' && !id.startsWith('vscode.instructions.file')
 }

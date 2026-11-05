@@ -3,6 +3,8 @@
 ## 0.3.1
 
 - The model picker no longer lists models on a server Toskar connects to, which it can't drive and which failed with "that model isn't installed on this computer" (toskar-core#960).
+- @toskar no longer sends the skills index and instruction files VS Code adds for Copilot, which it answered about instead of your message (toskar-core#960).
+- Sending Ask Toskar about This without a question now asks Toskar to explain the code, which stays data, and a selection goes once instead of twice (toskar-core#960).
 
 ## 0.3.0
 

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { chatEventOf, computerOf, conversationOf, dataOf, describeTool, EventReader, titleOf, withData, type Snippet } from './ask'
+import { attachedByPerson, chatEventOf, computerOf, conversationOf, dataOf, describeTool, distinct, EventReader, promptFor, titleOf, withData, type Snippet } from './ask'
 import type { Toskar, ToskarEvent } from './toskar'
 
 export const participantID = 'toskar.chat'
@@ -42,8 +42,9 @@ export function handler(connect: () => Promise<Toskar>): vscode.ChatRequestHandl
     const abort = new AbortController()
     token.onCancellationRequested(() => abort.abort())
 
-    const snippets = await snippetsOf(request.references)
+    let snippets = await snippetsOf(request.references)
     if (picked && Date.now() - picked.at < pickLasts) snippets.unshift(picked.snippet)
+    snippets = distinct(snippets)
     picked = undefined
     for (const s of snippets) stream.progress(`With ${s.label}`)
     const { data, cut } = dataOf(snippets)
@@ -66,7 +67,7 @@ export function handler(connect: () => Promise<Toskar>): vscode.ChatRequestHandl
     const events = await toskar.events(abort.signal).catch(() => undefined)
     if (events) void watch(toskar, events, conversationID, stream, abort.signal)
     try {
-      const body = await toskar.ask({ conversationID, message: withData(request.prompt, data), model, profile }, abort.signal)
+      const body = await toskar.ask({ conversationID, message: withData(promptFor(request.prompt, data), data), model, profile }, abort.signal)
       const reader = new EventReader()
       const decoder = new TextDecoder()
       for await (const chunk of body as unknown as AsyncIterable<Uint8Array>) {
@@ -91,6 +92,7 @@ export function handler(connect: () => Promise<Toskar>): vscode.ChatRequestHandl
 async function snippetsOf(refs: readonly vscode.ChatPromptReference[]): Promise<Snippet[]> {
   const out: Snippet[] = []
   for (const r of refs) {
+    if (!attachedByPerson(r.id)) continue
     try {
       if (r.value instanceof vscode.Uri) {
         const doc = await vscode.workspace.openTextDocument(r.value)
