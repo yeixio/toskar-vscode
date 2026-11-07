@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Connect to Another Computer** lists the Toskar computers on your network, so you choose one instead of looking up its address. **Enter an address** is still there. A computer whose network access is off says what to turn on.
+- When Toskar isn't answering, the status bar says **Toskar: connect**, and clicking it opens Toskar: Manage, rather than a page that won't open. The first time Toskar isn't running on your computer, VS Code offers to connect to one on your network, or to install Toskar.
+- The steps point to **Computers**, then **Connect a device**, as Toskar's guide does.
+
 ## 0.3.1
 
 - The model picker no longer lists models on a server Toskar connects to, which it can't drive and which failed with "that model isn't installed on this computer" (toskar-core#960).

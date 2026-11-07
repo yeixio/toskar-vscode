@@ -2,11 +2,14 @@ import { hostname } from 'node:os'
 import * as vscode from 'vscode'
 import { dataOf, titleOf, withData } from './ask'
 import { handler, lastSpeed, participantID, pick } from './participant'
+import { findComputers, type FoundComputer } from './discover'
 import { ToskarChatProvider } from './provider'
 import { hostPort, readCertificate, shortOf, type Pin } from './pin'
 import { pair, Toskar } from './toskar'
 
 const keySecret = 'toskar.apiKey'
+/** Set once the offer to connect to another computer has been shown. */
+const offeredState = 'toskar.offeredConnect'
 /** Certificates pinned when connecting, by Toskar's address. */
 const pinsState = 'toskar.pins'
 
@@ -50,7 +53,9 @@ export function activate(context: vscode.ExtensionContext): void {
   )
 
   // The status bar follows which model Toskar has loaded.
-  void showRunning(status, connect, speed)
+  void showRunning(status, connect, speed).then((answers) => {
+    if (answers === false) void offerConnect(context, refresh)
+  })
   const timer = setInterval(() => void showRunning(status, connect, speed), 30_000)
   context.subscriptions.push({ dispose: () => clearInterval(timer) })
 }
@@ -70,10 +75,10 @@ function url(): string {
  * The status bar: the model Toskar has loaded, on which computer, and how
  * fast @toskar's last answer came.
  */
-async function showRunning(status: vscode.StatusBarItem, connect: () => Promise<Toskar>, speed: number): Promise<void> {
+async function showRunning(status: vscode.StatusBarItem, connect: () => Promise<Toskar>, speed: number): Promise<boolean | undefined> {
   if (!vscode.workspace.getConfiguration('toskar').get<boolean>('statusBar', true)) {
     status.hide()
-    return
+    return undefined
   }
   try {
     const running = await (await connect()).running()
@@ -83,11 +88,36 @@ async function showRunning(status: vscode.StatusBarItem, connect: () => Promise<
     status.tooltip = first
       ? `Toskar has ${running.map((m) => m.display_name || m.model_id).join(', ')} loaded${first.node_name ? ` on ${first.node_name}` : ''}.${fast} Open Toskar's models.`
       : `Toskar is running, with no model loaded.${fast} Open Toskar's models.`
+    status.command = 'toskar.openModels'
   } catch {
-    status.text = '$(sparkle) Toskar: off'
-    status.tooltip = `Toskar isn't answering at ${url()}. Open Toskar: Manage to change where it runs.`
+    // Nothing answers: the status bar is the way to connect, not a page that won't open.
+    status.text = '$(sparkle) Toskar: connect'
+    status.tooltip = `Toskar isn't answering at ${url()}. Connect to Toskar on another computer, or change where it runs.`
+    status.command = 'toskar.manage'
+    status.show()
+    return false
   }
   status.show()
+  return true
+}
+
+/**
+ * The first time no Toskar answers here, says so once and offers to connect
+ * to one on the network: the way to was only in the Command Palette.
+ */
+async function offerConnect(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {
+  // Not when someone chose where Toskar runs: the setting's own default doesn't count.
+  const chosen = vscode.workspace.getConfiguration('toskar').inspect<string>('url')
+  if (context.globalState.get<boolean>(offeredState) || chosen?.globalValue || chosen?.workspaceValue || chosen?.workspaceFolderValue) return
+  await context.globalState.update(offeredState, true)
+  const connectLabel = 'Connect to Another Computer'
+  const choice = await vscode.window.showInformationMessage(
+    "Toskar isn't running on this computer. Connect to Toskar on another computer on your network, or install Toskar here.",
+    connectLabel,
+    'Install Toskar',
+  )
+  if (choice === connectLabel) await connectComputer(context, refresh)
+  else if (choice === 'Install Toskar') await vscode.env.openExternal(vscode.Uri.parse('https://toskar.ai/download'))
 }
 
 /**
@@ -169,25 +199,18 @@ function origin(address: string): string {
  */
 async function connectComputer(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {
   const title = 'Connect to Toskar on another computer'
-  const address = await vscode.window.showInputBox({
-    title,
-    prompt: "On that computer, open Toskar's API Access, then Devices, and choose Connect a device. Enter the address it shows.",
-    placeHolder: '192.168.1.20:7331',
-    ignoreFocusOut: true,
-    validateInput: (v) => (hostPort(v) ? undefined : 'An address such as 192.168.1.20:7331'),
-  })
-  const where = address ? hostPort(address) : undefined
+  const where = await chooseComputer(title)
   if (!where) return
   let pin: Pin
   try {
     pin = await readCertificate(where.host, where.port)
   } catch {
-    void vscode.window.showWarningMessage(`Toskar isn't answering at ${where.host}:${where.port}. Check the address, and that Connect a device is open on that computer.`)
+    void vscode.window.showWarningMessage(`Toskar isn't answering at ${where.host}:${where.port}. On that computer, open Computers and choose Connect a device, then try again.`)
     return
   }
   const code = await vscode.window.showInputBox({
     title,
-    prompt: `Enter the 6-digit code Toskar shows. Its certificate starts ${shortOf(pin.fingerprint)}: check that Toskar shows the same.`,
+    prompt: `Enter the 6-digit code Connect a device shows${where.name ? ` on ${where.name}` : ''}. Check that its encryption check code starts ${shortOf(pin.fingerprint)}.`,
     ignoreFocusOut: true,
     validateInput: (v) => (/^\d{6}$/.test(v.replace(/\s/g, '')) ? undefined : 'The 6 digits Toskar shows'),
   })
@@ -201,12 +224,56 @@ async function connectComputer(context: vscode.ExtensionContext, refresh: () => 
     refresh()
     void vscode.window.showInformationMessage(
       paired.key.permissions?.raw
-        ? `Connected to Toskar on ${where.host}. Its models are in Copilot Chat's model picker, and @toskar answers.`
-        : `Connected to Toskar on ${where.host}, and @toskar answers. For its models in the model picker, connect again with a code an Admin shows.`,
+        ? `Connected to Toskar on ${where.name ?? where.host}. Its models are in Copilot Chat's model picker, and @toskar answers.`
+        : `Connected to Toskar on ${where.name ?? where.host}, and @toskar answers. For its models in the model picker, connect again with a code an Admin shows.`,
     )
   } catch (err) {
     void vscode.window.showWarningMessage(`Toskar: ${(err as Error).message}`)
   }
+}
+
+/**
+ * Which computer to connect to: the Toskar computers found on the network,
+ * as they answer, or an address typed in.
+ */
+async function chooseComputer(title: string): Promise<{ host: string; port: number; name?: string } | undefined> {
+  type Item = vscode.QuickPickItem & { computer?: FoundComputer; typed?: boolean }
+  const typeIt: Item = { label: '$(edit) Enter an address', detail: 'Such as 192.168.1.20:7331, shown by Connect a device', typed: true, alwaysShow: true }
+  const picker = vscode.window.createQuickPick<Item>()
+  picker.title = title
+  picker.placeholder = "Choose the computer that runs Toskar. On it, open Computers and choose Connect a device."
+  picker.ignoreFocusOut = true
+  picker.busy = true
+  picker.items = [typeIt]
+  const stop = findComputers((found) => {
+    picker.items = [
+      ...found.map((c) => ({
+        label: `$(device-desktop) ${c.name}`,
+        description: `${c.host}:${c.port}`,
+        detail: c.onNetwork ? undefined : 'Answers only on itself: on it, choose Connect a device, then Allow and show a code.',
+        computer: c,
+      })),
+      typeIt,
+    ]
+  })
+  setTimeout(() => (picker.busy = false), 3000)
+  const chosen = await new Promise<Item | undefined>((resolve) => {
+    picker.onDidAccept(() => resolve(picker.selectedItems[0]))
+    picker.onDidHide(() => resolve(undefined))
+    picker.show()
+  })
+  stop()
+  picker.dispose()
+  if (chosen?.computer) return { host: chosen.computer.host, port: chosen.computer.port, name: chosen.computer.name }
+  if (!chosen?.typed) return undefined
+  const address = await vscode.window.showInputBox({
+    title,
+    prompt: 'On the computer that runs Toskar, open Computers and choose Connect a device. Enter the address it shows.',
+    placeHolder: '192.168.1.20:7331',
+    ignoreFocusOut: true,
+    validateInput: (v) => (hostPort(v) ? undefined : 'An address such as 192.168.1.20:7331'),
+  })
+  return address ? hostPort(address) : undefined
 }
 
 async function setKey(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {

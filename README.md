@@ -35,9 +35,10 @@ In an editor without Copilot Chat's chat view, **Ask Toskar about This** asks fo
 
 Connect the way a phone does, with a code:
 
-1. On the computer Toskar runs on, open Toskar's **API Access**, then **Devices**, and choose **Connect a device**.
-2. In VS Code, run **Toskar: Connect to Another Computer** and enter the address Toskar shows, such as `192.168.1.20:7331`.
-3. Check that the certificate VS Code names, such as `4F2A-9C1B`, is the one Toskar shows, then enter the 6-digit code.
+1. On the computer Toskar runs on, open **Computers** and choose **Connect a device**. If its network access is off, choose **Allow and show a code**.
+2. In VS Code, click **Toskar: connect** in the status bar, or run **Toskar: Connect to Another Computer**. If Toskar isn't running on your computer, VS Code offers this the first time it starts.
+3. Choose the computer from the list. VS Code finds the Toskar computers on your network. If yours isn't listed, choose **Enter an address** and type the address Toskar shows, such as `192.168.1.20:7331`.
+4. Check that the encryption check code VS Code names, such as `4F2A-9C1B`, is the one Toskar shows, then enter the 6-digit code.
 
 VS Code gets a key of its own, kept in its secret storage, and listed in Toskar's Devices, where you can disconnect it. It talks to Toskar over HTTPS and trusts only that computer's certificate from then on.
 
