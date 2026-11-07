@@ -124,6 +124,7 @@
     "test:e2e": "pnpm run build && esbuild test/e2e/suite.ts --bundle --platform=node --format=cjs --external:vscode --outfile=out/test/suite.js --sourcemap && esbuild test/e2e/run.ts --bundle --platform=node --format=cjs --external:@vscode/test-electron --outfile=out/test/run.js --sourcemap && cp test/e2e/llama-server.js out/test/ && node out/test/run.js"
   },
   "devDependencies": {
+    "@types/multicast-dns": "7.2.4",
     "@types/node": "^20.19.0",
     "@types/vscode": "~1.104.0",
     "@vscode/test-electron": "^3.1.0",
@@ -135,6 +136,7 @@
   },
   "packageManager": "pnpm@10.34.6",
   "dependencies": {
+    "multicast-dns": "7.2.5",
     "undici": "6.29.0"
   }
 }
