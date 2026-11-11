@@ -58,7 +58,7 @@
       },
       {
         "command": "toskar.setApiKey",
-        "title": "Set API Key",
+        "title": "Use an API Key Instead",
         "category": "Toskar"
       },
       {

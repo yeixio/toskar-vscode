@@ -158,11 +158,12 @@ async function askAboutThis(connect: () => Promise<Toskar>): Promise<void> {
 }
 
 async function manage(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {
+  const keyed = Boolean(await context.secrets.get(keySecret))
   const pick = await vscode.window.showQuickPick(
     [
       { label: 'Connect to Toskar on another computer', description: 'with the code from Connect a device', id: 'connect' },
       { label: 'Where Toskar runs', description: url(), id: 'url' },
-      { label: 'API key', description: (await context.secrets.get(keySecret)) ? 'set' : 'not set: none is needed on this computer', id: 'key' },
+      ...(keyed ? [{ label: 'Disconnect', description: 'forget the key for this computer, and use Toskar on this one', id: 'disconnect' }] : []),
       { label: "Open Toskar's models", id: 'models' },
     ],
     { title: 'Toskar' },
@@ -172,11 +173,26 @@ async function manage(context: vscode.ExtensionContext, refresh: () => void): Pr
   } else if (pick?.id === 'url') {
     const next = await vscode.window.showInputBox({ title: 'Where Toskar runs', value: url(), prompt: 'Its address, such as http://127.0.0.1:7331 for this computer' })
     if (next) await vscode.workspace.getConfiguration('toskar').update('url', next, vscode.ConfigurationTarget.Global)
-  } else if (pick?.id === 'key') {
-    await setKey(context, refresh)
+  } else if (pick?.id === 'disconnect') {
+    await disconnect(context, refresh)
   } else if (pick?.id === 'models') {
     await vscode.commands.executeCommand('toskar.openModels')
   }
+}
+
+/**
+ * Forgets the key and the certificate for the computer this editor
+ * connected to, and goes back to Toskar on this computer. The computer
+ * still lists the key under Devices until it's disconnected there.
+ */
+async function disconnect(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {
+  const pins = { ...context.globalState.get<Record<string, Pin>>(pinsState, {}) }
+  delete pins[origin(url())]
+  await context.globalState.update(pinsState, pins)
+  await context.secrets.delete(keySecret)
+  await vscode.workspace.getConfiguration('toskar').update('url', undefined, vscode.ConfigurationTarget.Global)
+  refresh()
+  void vscode.window.showInformationMessage("Disconnected. To remove this editor's key from that computer too, disconnect it under Devices in Toskar.")
 }
 
 function pinFor(context: vscode.ExtensionContext, address: string): Pin | undefined {
@@ -276,15 +292,45 @@ async function chooseComputer(title: string): Promise<{ host: string; port: numb
   return address ? hostPort(address) : undefined
 }
 
+/**
+ * A key from API Access instead of a code, for an editor nobody can type a
+ * code into, such as one on a remote server. An HTTPS address gets its
+ * certificate pinned here, as connecting with a code does.
+ */
 async function setKey(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {
   const key = await vscode.window.showInputBox({
-    title: 'Toskar API key',
-    prompt: `A key from Toskar's API Access with "Drive models directly, for coding agents" on. Leave empty to remove it.`,
+    title: 'Use an API key instead of a code',
+    prompt: `A key from Toskar's API Access. For the model picker, turn on "Drive models directly, for coding agents" in its permissions. Leave empty to remove it.`,
     password: true,
     ignoreFocusOut: true,
   })
   if (key === undefined) return
-  if (key) await context.secrets.store(keySecret, key)
-  else await context.secrets.delete(keySecret)
+  if (!key) {
+    await context.secrets.delete(keySecret)
+    return refresh()
+  }
+  const address = url()
+  if (address.startsWith('https:') && !pinFor(context, address)) {
+    const where = hostPort(address)
+    let pin: Pin | undefined
+    try {
+      pin = where && (await readCertificate(where.host, where.port))
+    } catch {
+      // Not answering: said below.
+    }
+    if (!pin) {
+      void vscode.window.showWarningMessage(`Toskar isn't answering at ${address}. Set where it runs with Toskar: Manage, then try again.`)
+      return
+    }
+    const ok = 'It Matches'
+    const choice = await vscode.window.showWarningMessage(
+      `Check that the encryption check code Toskar shows under Computers, Connect a device, starts ${shortOf(pin.fingerprint)}.`,
+      { modal: true },
+      ok,
+    )
+    if (choice !== ok) return
+    await context.globalState.update(pinsState, { ...context.globalState.get<Record<string, Pin>>(pinsState, {}), [origin(address)]: pin })
+  }
+  await context.secrets.store(keySecret, key)
   refresh()
 }
