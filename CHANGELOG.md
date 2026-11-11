@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Connecting is one way: the code from Connect a device. **Toskar: Manage** no longer asks for an API key, and offers **Disconnect** once you're connected. A key from API Access is still there for an editor nobody can type a code into, as **Toskar: Use an API Key Instead**, and it now checks and pins the certificate of an HTTPS address, as a code does. Messages that said to set an API key now say to connect with a code.
 - Connecting with a code works again. VS Code refused Toskar's certificate after the code was accepted, since it wouldn't treat a certificate Toskar made itself as trusted, so every request failed with a certificate error. The extension now compares the certificate with the one you checked, byte for byte, before anything is sent.
 - **Connect to Another Computer** lists the Toskar computers on your network, so you choose one instead of looking up its address. **Enter an address** is still there. A computer whose network access is off says what to turn on.
 - When Toskar isn't answering, the status bar says **Toskar: connect**, and clicking it opens Toskar: Manage, rather than a page that won't open. The first time Toskar isn't running on your computer, VS Code offers to connect to one on your network, or to install Toskar.

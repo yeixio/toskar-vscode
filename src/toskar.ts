@@ -199,11 +199,11 @@ async function explain(resp: Response): Promise<string> {
     // Not JSON: the status says enough.
   }
   if (code === 'RAW_NOT_ALLOWED') {
-    return `${message}. In Toskar, open API Access and turn on "Drive models directly, for coding agents" for this editor's key, or have an Admin show the code when you connect.`
+    return `${message}. For the model picker, connect again with Toskar: Connect to Another Computer, using a code an Admin or the Owner shows. With an API key, turn on "Drive models directly, for coding agents" for it in API Access.`
   }
   // Connecting's own errors say what to do.
   if (code.startsWith('PAIRING_')) return message.charAt(0).toUpperCase() + message.slice(1) + '.'
 
-  if (resp.status === 401) return `${message}. Set your Toskar API key with Toskar: Set API Key.`
+  if (resp.status === 401) return `${message}. Connect with the code from Toskar's Connect a device: run Toskar: Connect to Another Computer.`
   return message
 }

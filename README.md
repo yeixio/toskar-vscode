@@ -44,7 +44,9 @@ VS Code gets a key of its own, kept in its secret storage, and listed in Toskar'
 
 The model picker needs raw access, which lets an agent drive a model directly. VS Code gets it when an Admin or the Owner showed the code. Otherwise @toskar works, and the model picker asks you to connect again with an Admin's code.
 
-You can also use a key from **API Access** instead: set where Toskar runs with **Toskar: Manage**, and the key with **Toskar: Set API Key**. For the model picker, turn on **Drive models directly, for coding agents** in its permissions.
+To stop using that computer, choose **Disconnect** in **Toskar: Manage**. VS Code goes back to Toskar on this computer. To remove its key from the other computer too, disconnect it under **Devices** in Toskar.
+
+Where nobody can type a code, as in an editor on a remote server, use a key from **API Access** instead: set where Toskar runs with **Toskar: Manage**, then run **Toskar: Use an API Key Instead**. VS Code asks you to check the encryption check code, as connecting with a code does. For the model picker, turn on **Drive models directly, for coding agents** in the key's permissions.
 
 ## How it works
 
@@ -65,8 +67,8 @@ You can also use a key from **API Access** instead: set where Toskar runs with *
 
 - **Ask Toskar about This**: the selection, or the file, for the next @toskar message.
 - **Toskar: Connect to Another Computer**: connect with the code from Connect a device.
-- **Toskar: Manage**: where Toskar runs, the API key, and Toskar's models. Copilot's model manager opens this too.
-- **Toskar: Set API Key**
+- **Toskar: Manage**: connect, where Toskar runs, disconnect, and Toskar's models. Copilot's model manager opens this too.
+- **Toskar: Use an API Key Instead**: a key from API Access, for an editor nobody can type a code into.
 - **Toskar: Refresh Models**: list the models again after installing one in Toskar.
 - **Toskar: Open Models**
 
