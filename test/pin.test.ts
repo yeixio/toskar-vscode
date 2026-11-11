@@ -56,6 +56,19 @@ describe('pinning', () => {
     await expect(new Toskar(`https://127.0.0.1:${other.port}`, 'ygg_editor', pin).running()).rejects.toThrow("Toskar's certificate isn't the one")
   })
 
+  it("trusts the pinned certificate by its bytes, not as an authority", async () => {
+    // VS Code's TLS library won't take Toskar's certificate as its own root,
+    // which this Node does; an expired one stands in, since no authority
+    // check passes it either.
+    const expired = await serve('toskar-expired.crt', 'toskar-expired.key', () => [])
+    try {
+      const pin = await readCertificate('127.0.0.1', expired.port)
+      expect(await new Toskar(`https://127.0.0.1:${expired.port}`, undefined, pin).running()).toEqual([])
+    } finally {
+      expired.server.close()
+    }
+  })
+
   it('connects with the code, asking for raw access, and checks the certificate Toskar names', async () => {
     const pin = await readCertificate('127.0.0.1', toskar.port)
     const base = `https://127.0.0.1:${toskar.port}`

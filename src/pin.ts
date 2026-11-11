@@ -4,8 +4,8 @@
 // is trusted for that address. Nothing here imports vscode.
 
 import { createHash, X509Certificate } from 'node:crypto'
-import { connect } from 'node:tls'
-import { Agent } from 'undici'
+import { connect, type TLSSocket } from 'node:tls'
+import { Agent, buildConnector } from 'undici'
 
 /** A pinned certificate: its PEM, and its SHA-256 as Toskar writes it. */
 export interface Pin {
@@ -49,14 +49,22 @@ function isIP(host: string): boolean {
 /**
  * Connections that trust only the pinned certificate, whatever name or
  * address it's reached by: Toskar's names its computer and its addresses
- * when it was made, which may since have changed.
+ * when it was made, which may since have changed. The certificate is
+ * compared byte for byte before a request goes out, not checked as an
+ * authority: VS Code's TLS library won't take Toskar's, which isn't one,
+ * as its own root, and refused every connection.
  */
 export function pinnedAgent(pin: Pin): Agent {
+  const base = buildConnector({ rejectUnauthorized: false })
   return new Agent({
-    connect: {
-      ca: pin.pem,
-      checkServerIdentity: (_host, cert) => (fingerprintOf(cert.raw) === pin.fingerprint ? undefined : new Error("Toskar's certificate changed")),
-    },
+    connect: (options, callback) =>
+      base(options, (err, socket) => {
+        if (err) return callback(err, null)
+        const cert = (socket as TLSSocket).getPeerCertificate?.(false)
+        if (cert?.raw && fingerprintOf(cert.raw) === pin.fingerprint) return callback(null, socket)
+        socket.destroy()
+        callback(Object.assign(new Error("Toskar's certificate changed"), { code: 'ERR_TLS_CERT_PINNED' }), null)
+      }),
   })
 }
 
