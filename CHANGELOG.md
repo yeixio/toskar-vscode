@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - Connecting is one way: the code from Connect a device. **Toskar: Manage** no longer asks for an API key, and offers **Disconnect** once you're connected. A key from API Access is still there for an editor nobody can type a code into, as **Toskar: Use an API Key Instead**, and it now checks and pins the certificate of an HTTPS address, as a code does. Messages that said to set an API key now say to connect with a code.
 - Connecting with a code works again. VS Code refused Toskar's certificate after the code was accepted, since it wouldn't treat a certificate Toskar made itself as trusted, so every request failed with a certificate error. The extension now compares the certificate with the one you checked, byte for byte, before anything is sent.
