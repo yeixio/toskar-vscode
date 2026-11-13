@@ -4,6 +4,7 @@
 
 import { fetch as pinnedFetch, type Dispatcher } from 'undici'
 import { pinnedAgent, type Pin } from './pin'
+import type { SwarmMode, SwarmNode, SwarmRecord } from './swarm'
 
 /** A model as Toskar's /api/v1/models lists it; only what's read here. */
 export interface ToskarModel {
@@ -123,9 +124,43 @@ export class Toskar {
     const body: Record<string, unknown> = { conversation_id: o.conversationID, message: o.message, stream: true, client: 'editor' }
     if (o.model) body.model_id = o.model
     if (o.profile) body.profile_id = o.profile
+    if (o.swarm) body.swarm = o.swarm
     const resp = await this.post('/api/v1/chat', body, signal)
     if (!resp.body) throw new ToskarError('Toskar answered without a stream')
     return resp.body
+  }
+
+  /**
+   * Stops a chat's running turn, as Stop in the apps does. On a swarm's
+   * coordinator chat, it stops every agent too.
+   */
+  async stop(conversationID: string): Promise<void> {
+    await this.post('/api/v1/chat/stop', { conversation_id: conversationID })
+  }
+
+  /**
+   * The client contract Toskar speaks, such as "1.88", from /api/v1/version,
+   * or the header every answer carries. Empty when it doesn't say.
+   */
+  async contract(signal?: AbortSignal): Promise<string> {
+    const resp = await this.fetch('/api/v1/version', { headers: this.headers(), signal })
+    const header = resp.headers.get('Toskar-Contract') ?? resp.headers.get('Yggdrasil-Contract') ?? ''
+    try {
+      const body = (await resp.json()) as { contract?: { version?: string } }
+      return body.contract?.version || header
+    } catch {
+      return header
+    }
+  }
+
+  /** A swarm's record: its agents, how each went, and the winner of a race. */
+  async swarm(id: string, signal?: AbortSignal): Promise<SwarmRecord> {
+    return this.get<SwarmRecord>(`/api/v1/swarms/${encodeURIComponent(id)}`, signal)
+  }
+
+  /** The computers Toskar knows, to name where a swarm's agents run. */
+  async nodes(signal?: AbortSignal): Promise<SwarmNode[]> {
+    return this.get<SwarmNode[]>('/api/v1/nodes', signal)
   }
 
   /** Toskar's events as they happen, such as a tool waiting for a yes. */
@@ -174,6 +209,8 @@ export interface AskOptions {
   message: string
   model?: string
   profile?: string
+  /** Runs the turn as a swarm (contract 1.88). */
+  swarm?: SwarmMode
 }
 
 export interface Conversation {

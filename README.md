@@ -31,6 +31,23 @@ When Toskar's assistant wants a tool that asks first, such as running code, VS C
 
 In an editor without Copilot Chat's chat view, **Ask Toskar about This** asks for your question, waits for the answer, and opens the chat in Toskar.
 
+## Several agents at once: `/swarm`
+
+`@toskar /swarm` sends your question to a swarm: several of Toskar's agents working on it at once, on the computers and models Toskar has. It needs a Toskar with swarms (client contract 1.88 or later); an older one says to update Toskar, and `@toskar` without `/swarm` works as before.
+
+- `@toskar /swarm Compare these two ways to cache this` **splits** the question into parts, one agent each, and merges what they found into one answer. Split is the default.
+- `@toskar /swarm race Which of these is faster?` **races** the models on your profile's list, each answering the whole question, and the best answer wins, or the answers are merged.
+
+While the swarm runs, the chat shows a line for each agent's steps, such as "Agent 2 · tests · laptop · qwen3.5-9b: running go test": its part, the computer it runs on, its model, and what it's doing. Then the merge, and any conflict, and then the answer. Under the answer, a table sums up the agents (part, computer, model, and how each ended) with a link that opens the swarm's chat in Toskar's web app, where each agent's own chat can be opened and continued.
+
+Stopping the answer in VS Code stops the whole swarm: every agent, and the merge.
+
+When an agent wants a tool that asks first, VS Code asks as it does for @toskar's own tools, starting with which agent asks, such as "Agent 2: Toskar wants to run terminal", and that agent's part. **Allow for This Agent** lets that tool run for the rest of that agent's chat only, never the whole swarm's.
+
+From VS Code, a swarm answers a question. Its agents use the profile's tools, as @toskar does, but don't work in a folder of your code. A swarm that works on a task in a folder, each agent changing files in its own copy and Toskar merging them, is for an Admin in Toskar's web app, desktop app, or terminal. To have a swarm change your code, start it there.
+
+When Toskar can't run the agents at once, such as on a computer that runs one request at a time with that model, the chat says why, and one agent answers.
+
 ## Toskar on another computer
 
 Connect the way a phone does, with a code:
@@ -52,7 +69,9 @@ Where nobody can type a code, as in an editor on a remote server, use a key from
 
 **The model picker:** the extension adds Toskar as a language model provider. Each installed chat model is listed with its real context window and whether it calls tools. A request goes to Toskar's raw mode (`raw:<model>` on `/v1/chat/completions`). That's the model itself, with Copilot's own tools passed through, and none of Toskar's assistant on top. Answers stream back as they're written. When an agent sends more tools than the model's window holds, Toskar gives the model the most relevant ones and lets it search for the rest.
 
-**@toskar:** a VS Code chat becomes a Toskar chat (`POST /api/v1/chat`), so Toskar's assistant answers: the profile's tools, knowledge, and memory, and the model Toskar picks. Tools that ask first come as Toskar's events and are answered with `/api/v1/tools/decide`, as the apps answer them.
+**@toskar:** a VS Code chat becomes a Toskar chat (`POST /api/v1/chat`), so Toskar's assistant answers: the profile's tools, knowledge, and memory, and the model Toskar picks. Tools that ask first come as Toskar's events and are answered with `/api/v1/tools/decide`, as the apps answer them. Stopping an answer also sends `POST /api/v1/chat/stop` for its chat.
+
+**`/swarm`:** the extension checks the contract in `GET /api/v1/version`, then sends the turn with `swarm` set to `split` or `race`. The lanes come from the `swarm.*` events for the chat, the summary from `GET /api/v1/swarms/{id}`, and the computers' names from `GET /api/v1/nodes`. The extension sends its turns as `client` `editor`, which Toskar answers without a folder, so a swarm from VS Code is a question swarm.
 
 ## Settings
 
@@ -66,6 +85,7 @@ Where nobody can type a code, as in an editor on a remote server, use a key from
 ## Commands
 
 - **Ask Toskar about This**: the selection, or the file, for the next @toskar message.
+- **@toskar /swarm**: several agents at once on a question; `race` first races the models.
 - **Toskar: Connect to Another Computer**: connect with the code from Connect a device.
 - **Toskar: Manage**: connect, where Toskar runs, disconnect, and Toskar's models. Copilot's model manager opens this too.
 - **Toskar: Use an API Key Instead**: a key from API Access, for an editor nobody can type a code into.
@@ -76,7 +96,7 @@ Where nobody can type a code, as in an editor on a remote server, use a key from
 
 ```bash
 pnpm install
-pnpm test        # the conversion, @toskar's messages, and the Toskar client, without VS Code
+pnpm test        # the conversion, @toskar's messages and /swarm, and the Toskar client, without VS Code
 pnpm typecheck
 pnpm build       # out/extension.js
 pnpm package     # toskar-<version>.vsix
