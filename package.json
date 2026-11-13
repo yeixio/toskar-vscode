@@ -103,7 +103,13 @@
         "name": "toskar",
         "fullName": "Toskar",
         "description": "Ask Toskar about your code, with its profiles, knowledge, and memory",
-        "isSticky": true
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "swarm",
+            "description": "Several agents at once: split the question into parts, or race models with \"race\" first"
+          }
+        ]
       }
     ],
     "menus": {

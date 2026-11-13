@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **@toskar /swarm** sends a question to a swarm: several of Toskar's agents at once, on the computers and models Toskar has. `/swarm race` races the models on your profile's list on the whole question; otherwise the question is split into parts. While it runs, the chat shows each agent's steps, with its part, computer, and model, then the merge and the answer, and a summary of the agents with a link to the swarm in Toskar. An agent's tool that asks first says which agent asks. From VS Code a swarm answers a question; a swarm that changes code in a folder starts in Toskar's web app, desktop app, or terminal. It needs a Toskar with swarms; an older one says to update Toskar (toskar-core#1135).
+- Stopping an @toskar answer also tells Toskar to stop that chat's turn, so a swarm's agents, and work on another computer, stop with it.
+
 ## 0.4.0
 
 - Connecting is one way: the code from Connect a device. **Toskar: Manage** no longer asks for an API key, and offers **Disconnect** once you're connected. A key from API Access is still there for an editor nobody can type a code into, as **Toskar: Use an API Key Instead**, and it now checks and pins the certificate of an HTTPS address, as a code does. Messages that said to set an API key now say to connect with a code.
