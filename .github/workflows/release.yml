@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   id-token: write
+  actions: read
 
 jobs:
   publish:
@@ -18,7 +19,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - name: The tagged commit is green
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # CI passed on main for this commit (.github/scripts/require-green.sh).
+        run: .github/scripts/require-green.sh
+      - uses: pnpm/action-setup@v6
         with:
           dest: ${{ runner.temp }}/setup-pnpm
       - uses: actions/setup-node@v5
