@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       # Each job gets its own pnpm: self-hosted runners share a home folder.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           dest: ${{ runner.temp }}/setup-pnpm
       - uses: actions/setup-node@v5
@@ -31,7 +31,7 @@ jobs:
       - run: pnpm build
       # The package a release would publish builds, with its manifest checked.
       - run: pnpm package
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: toskar-vsix
           path: '*.vsix'
@@ -46,7 +46,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           dest: ${{ runner.temp }}/setup-pnpm
       - uses: actions/setup-node@v5
@@ -56,7 +56,7 @@ jobs:
       - name: A screen for VS Code
         run: sudo apt-get update -q && sudo apt-get install -y -q xvfb
       # Only changing the VS Code version in run.ts downloads it again.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/toskar-vscode-test
           key: vscode-test-${{ hashFiles('test/e2e/run.ts') }}
