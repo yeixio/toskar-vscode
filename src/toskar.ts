@@ -15,6 +15,8 @@ export interface ToskarModel {
   installed?: boolean
   support_role?: string
   context_window?: number
+  /** The windows it can take on that computer, and how well it fits at each (toskar-core#962). */
+  context_options?: { tokens: number; fit: string }[]
   capabilities?: { tool_calling?: boolean; vision?: boolean }
 }
 

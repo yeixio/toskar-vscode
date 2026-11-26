@@ -5,22 +5,56 @@ import type { Toskar, ToskarModel } from './toskar'
 /** The most of a model's window kept for its answer. */
 const answerTokens = 4096
 
+/** The window a model is counted on for when Toskar says nothing. */
+const fallbackWindow = 8192
+
+/**
+ * The fits at which Toskar makes a model's window bigger when a request
+ * needs it (toskar-core#962): past tight, it won't.
+ */
+const roomyFits = new Set(['excellent', 'good', 'tight'])
+
+/**
+ * About what Copilot Chat's Agent mode takes before your question: its
+ * instructions and tool definitions. Below it, Copilot stops with "static
+ * system messages and tool definitions exceed this model's context budget".
+ */
+export const agentModeTokens = 32768
+
+/**
+ * The most context a model can have on its computer. A model starts with a
+ * window that fits its memory well, and Toskar makes it bigger when a
+ * request needs it, up to the largest that still fits, so that's what
+ * Copilot is told. Copilot counts its tools and instructions against it
+ * before it sends anything, and the window a model starts with is often too
+ * small for Agent mode.
+ */
+export function windowOf(m: ToskarModel): number {
+  const roomy = (m.context_options ?? []).filter((o) => roomyFits.has(o.fit)).map((o) => o.tokens)
+  return Math.max(m.context_window || 0, ...roomy) || fallbackWindow
+}
+
 /** A Toskar model, as Copilot Chat's model picker lists it. */
 export interface ToskarModelInfo extends vscode.LanguageModelChatInformation {
   readonly toskarID: string
 }
 
 export function modelInfo(m: ToskarModel, where: string): ToskarModelInfo {
-  const window = m.context_window || 8192
+  const window = windowOf(m)
   const output = Math.min(answerTokens, Math.floor(window / 4))
+  const name = m.display_name || m.id
+  let tooltip = `${name} on ${where}: up to ${window.toLocaleString('en-US')} tokens of context, run by Toskar.`
+  if (window < agentModeTokens) {
+    tooltip += ` Copilot's Agent mode needs about ${agentModeTokens.toLocaleString('en-US')}, so use Ask mode with it, or pick a smaller model, which has room for more.`
+  }
   return {
     id: m.id,
     toskarID: m.id,
-    name: m.display_name || m.id,
+    name,
     family: m.family || m.id,
     version: m.parameters || '',
-    detail: 'Toskar',
-    tooltip: `${m.display_name || m.id} on ${where}: ${window.toLocaleString()} tokens of context, run by Toskar.`,
+    detail: window < agentModeTokens ? `Toskar · ${Math.floor(window / 1024)}K, Ask mode` : 'Toskar',
+    tooltip,
     maxInputTokens: window - output,
     maxOutputTokens: output,
     capabilities: { toolCalling: Boolean(m.capabilities?.tool_calling), imageInput: Boolean(m.capabilities?.vision) },
