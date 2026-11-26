@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Toskar's models work in Copilot Chat's Agent mode on a computer where they start with a small window. Copilot counts its instructions and tool definitions against the window a model says it has before sending anything, and stopped with "static system messages and tool definitions exceed this model's context budget". The model picker now gives each model the most context it can have on its computer, since Toskar makes a model's window bigger when a request needs it (toskar-core#962). A model that can't hold Agent mode there says **Ask mode** beside its name, and its tooltip says what to do.
 - **@toskar /swarm** sends a question to a swarm: several of Toskar's agents at once, on the computers and models Toskar has. `/swarm race` races the models on your profile's list on the whole question; otherwise the question is split into parts. While it runs, the chat shows each agent's steps, with its part, computer, and model, then the merge and the answer, and a summary of the agents with a link to the swarm in Toskar. An agent's tool that asks first says which agent asks. From VS Code a swarm answers a question; a swarm that changes code in a folder starts in Toskar's web app, desktop app, or terminal. It needs a Toskar with swarms; an older one says to update Toskar (toskar-core#1135).
 - Stopping an @toskar answer also tells Toskar to stop that chat's turn, so a swarm's agents, and work on another computer, stop with it.
 
