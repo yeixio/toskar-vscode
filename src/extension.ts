@@ -12,14 +12,17 @@ const keySecret = 'toskar.apiKey'
 const offeredState = 'toskar.offeredConnect'
 /** Certificates pinned when connecting, by Toskar's address. */
 const pinsState = 'toskar.pins'
+/** Where the key came from: 'code' (Connect a device) or 'apiKey' (API Access). */
+const keyFromState = 'toskar.keyFrom'
 
 export function activate(context: vscode.ExtensionContext): void {
   const connect = async () => new Toskar(url(), await context.secrets.get(keySecret), pinFor(context, url()))
-  const provider = new ToskarChatProvider(connect)
+  let refresh = () => {}
+  const provider = new ToskarChatProvider(connect, () => void offerRawAccess(context, () => refresh()))
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90)
   status.command = 'toskar.openModels'
 
-  const refresh = () => {
+  refresh = () => {
     provider.refresh()
     void showRunning(status, connect, speed)
   }
@@ -213,9 +216,13 @@ function origin(address: string): string {
  * its address and the code from Connect a device, with its certificate
  * pinned. An Admin's code gives the key raw access, for the model picker.
  */
-async function connectComputer(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {
-  const title = 'Connect to Toskar on another computer'
-  const where = await chooseComputer(title)
+async function connectComputer(
+  context: vscode.ExtensionContext,
+  refresh: () => void,
+  again?: { host: string; port: number; name?: string },
+): Promise<void> {
+  const title = again ? 'Connect again to Toskar' : 'Connect to Toskar on another computer'
+  const where = again ?? (await chooseComputer(title))
   if (!where) return
   let pin: Pin
   try {
@@ -235,6 +242,7 @@ async function connectComputer(context: vscode.ExtensionContext, refresh: () => 
   try {
     const paired = await pair(base, pin, code.replace(/\s/g, ''), `${vscode.env.appName} on ${hostname()}`.slice(0, 60))
     await context.secrets.store(keySecret, paired.api_key)
+    await context.globalState.update(keyFromState, 'code')
     await context.globalState.update(pinsState, { ...context.globalState.get<Record<string, Pin>>(pinsState, {}), [origin(base)]: pin })
     await vscode.workspace.getConfiguration('toskar').update('url', base, vscode.ConfigurationTarget.Global)
     refresh()
@@ -332,5 +340,37 @@ async function setKey(context: vscode.ExtensionContext, refresh: () => void): Pr
     await context.globalState.update(pinsState, { ...context.globalState.get<Record<string, Pin>>(pinsState, {}), [origin(address)]: pin })
   }
   await context.secrets.store(keySecret, key)
+  await context.globalState.update(keyFromState, 'apiKey')
   refresh()
+}
+
+let rawOffered = false
+
+/**
+ * Copilot Chat's model picker needs a key that drives models directly. When
+ * Toskar says this one can't, offers the fix once a window, instead of only
+ * failing in the chat: connecting again to the same computer with a code an
+ * Admin or the Owner shows turns it on, and a key from API Access has it
+ * turned on there.
+ */
+async function offerRawAccess(context: vscode.ExtensionContext, refresh: () => void): Promise<void> {
+  if (rawOffered) return
+  rawOffered = true
+  const address = url()
+  const where = hostPort(address)
+  const fromKey = context.globalState.get<string>(keyFromState) === 'apiKey'
+  const again = 'Connect Again'
+  const open = 'Open API Access'
+  const message = fromKey
+    ? `This editor's API key can't use Toskar's models in Copilot Chat yet. In API Access, turn on "Drive models directly, for coding agents" for it, then try again. Or connect again with a code instead, and it's turned on for you.`
+    : `This editor's key can't use Toskar's models in Copilot Chat yet. Connect again with the code from Connect a device, shown by an Admin or the Owner, and it's turned on for you.`
+  const buttons = fromKey ? [open, again] : [again, open]
+  const choice = await vscode.window.showWarningMessage(message, ...buttons)
+  if (choice === again) {
+    await connectComputer(context, refresh, where ?? undefined)
+  } else if (choice === open) {
+    await vscode.env.openExternal(vscode.Uri.parse(`${address.replace(/\/+$/, '')}/settings/developer`))
+  }
+  // Ask again next time it happens, once something may have changed.
+  rawOffered = false
 }

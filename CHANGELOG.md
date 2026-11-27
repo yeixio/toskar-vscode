@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2
+
+- When Toskar says this editor's key can't drive its models, which Copilot Chat's model picker needs, VS Code now says so and offers the fix: **Connect Again** connects to the same computer with a code from Connect a device, shown by an Admin or the Owner, which turns it on for you; **Open API Access** opens the page where a key from API Access has it turned on. Before, Copilot Chat tried the request five more times and showed "502 this key can't drive a model directly".
+- A request Toskar refuses for the key, or for a model that isn't there, reaches Copilot Chat as that, rather than as the server failing, so it isn't tried again.
+
 ## 0.4.1
 
 - Toskar's models work in Copilot Chat's Agent mode on a computer where they start with a small window. Copilot counts its instructions and tool definitions against the window a model says it has before sending anything, and stopped with "static system messages and tool definitions exceed this model's context budget". The model picker now gives each model the most context it can have on its computer, since Toskar makes a model's window bigger when a request needs it (toskar-core#962). A model that can't hold Agent mode there says **Ask mode** beside its name, and its tooltip says what to do.

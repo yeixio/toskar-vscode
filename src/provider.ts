@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { estimateTokens, StreamReader, toChatMessages, toChatTools, type Message, type Part } from './convert'
-import type { Toskar, ToskarModel } from './toskar'
+import { ToskarError, type Toskar, type ToskarModel } from './toskar'
 
 /** The most of a model's window kept for its answer. */
 const answerTokens = 4096
@@ -96,7 +96,14 @@ export class ToskarChatProvider implements vscode.LanguageModelChatProvider<Tosk
   private readonly changed = new vscode.EventEmitter<void>()
   readonly onDidChangeLanguageModelChatInformation = this.changed.event
 
-  constructor(private readonly connect: () => Promise<Toskar>) {}
+  /**
+   * noRaw runs when Toskar says this editor's key can't drive a model
+   * directly, so the person can be offered the fix.
+   */
+  constructor(
+    private readonly connect: () => Promise<Toskar>,
+    private readonly noRaw: () => void = () => {},
+  ) {}
 
   /** Lists the models again, after the address or key changes. */
   refresh(): void {
@@ -128,7 +135,13 @@ export class ToskarChatProvider implements vscode.LanguageModelChatProvider<Tosk
       body.tools = toChatTools(options.tools)
       body.tool_choice = options.toolMode === vscode.LanguageModelChatToolMode.Required ? 'required' : 'auto'
     }
-    const stream = await toskar.chat(model.toskarID, body, signalOf(token))
+    let stream: ReadableStream<Uint8Array>
+    try {
+      stream = await toskar.chat(model.toskarID, body, signalOf(token))
+    } catch (err) {
+      if (err instanceof ToskarError && err.code === 'RAW_NOT_ALLOWED') this.noRaw()
+      throw modelError(err)
+    }
     const reader = new StreamReader()
     const decoder = new TextDecoder()
     const emit = (events: ReturnType<StreamReader['push']>) => {
@@ -149,6 +162,18 @@ export class ToskarChatProvider implements vscode.LanguageModelChatProvider<Tosk
     const m = messageOf(text)
     return m.parts.reduce((n, p) => n + estimateTokens(p.kind === 'text' || p.kind === 'result' ? p.text : p.kind === 'call' ? JSON.stringify(p.input) : ''), 0)
   }
+}
+
+/**
+ * err as Copilot Chat takes it. A plain error reads to it as the server
+ * failing, so it tries again and reports a 502; a key that
+ * isn't allowed, or a model that isn't there, won't be fixed by trying again.
+ */
+export function modelError(err: unknown): unknown {
+  if (!(err instanceof ToskarError)) return err
+  if (err.status === 401 || err.status === 403) return vscode.LanguageModelError.NoPermissions(err.message)
+  if (err.status === 404) return vscode.LanguageModelError.NotFound(err.message)
+  return err
 }
 
 /** An abort signal that follows a cancellation token. */

@@ -13,6 +13,25 @@ export class EventEmitter<T> {
 }
 
 export class Uri {}
+
+/** As VS Code's: the error a chat model provider throws, with a code Copilot Chat reads. */
+export class LanguageModelError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+  ) {
+    super(message)
+  }
+  static NoPermissions(message?: string) {
+    return new LanguageModelError(message ?? '', 'NoPermissions')
+  }
+  static NotFound(message?: string) {
+    return new LanguageModelError(message ?? '', 'NotFound')
+  }
+  static Blocked(message?: string) {
+    return new LanguageModelError(message ?? '', 'Blocked')
+  }
+}
 export class Location {}
 export class ChatResponseTurn {}
 
