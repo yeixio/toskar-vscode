@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { agentModeTokens, modelInfo, windowOf } from '../src/provider'
+import { agentModeTokens, modelError, modelInfo, windowOf } from '../src/provider'
+import { ToskarError } from '../src/toskar'
 
 describe('windowOf', () => {
   it('counts on the largest window that still fits, since Toskar grows to it', () => {
@@ -37,5 +38,24 @@ describe('modelInfo', () => {
     const info = modelInfo({ id: 'a', display_name: 'Big', context_window: 16384 }, 'rig')
     expect(info.detail).toBe('Toskar · 16K, Ask mode')
     expect(info.tooltip).toContain('Ask mode')
+  })
+})
+
+describe('modelError', () => {
+  it("tells Copilot a key that isn't allowed isn't worth trying again", () => {
+    const err = modelError(new ToskarError("this key can't drive a model directly", 403, 'RAW_NOT_ALLOWED')) as Error & { code: string }
+    expect(err.code).toBe('NoPermissions')
+    expect(err.message).toContain("can't drive a model directly")
+  })
+
+  it('says a missing model is missing', () => {
+    expect((modelError(new ToskarError('gone', 404)) as { code: string }).code).toBe('NotFound')
+  })
+
+  it('leaves other failures as they are', () => {
+    const err = new ToskarError('the model didn\'t answer', 502)
+    expect(modelError(err)).toBe(err)
+    const plain = new Error('x')
+    expect(modelError(plain)).toBe(plain)
   })
 })

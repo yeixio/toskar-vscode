@@ -33,6 +33,8 @@ export class ToskarError extends Error {
   constructor(
     message: string,
     readonly status = 0,
+    /** Toskar's error code, such as RAW_NOT_ALLOWED, when it gave one. */
+    readonly code = '',
   ) {
     super(message)
   }
@@ -77,7 +79,10 @@ export class Toskar {
       }
       throw new ToskarError(`Toskar isn't answering at ${this.url}. Start Toskar, or set where it runs with Toskar: Manage.`)
     }
-    if (!resp.ok) throw new ToskarError(await explain(resp), resp.status)
+    if (!resp.ok) {
+      const { message, code } = await explain(resp)
+      throw new ToskarError(message, resp.status, code)
+    }
     return resp
   }
 
@@ -226,8 +231,8 @@ export interface ToskarEvent {
   payload?: Record<string, unknown>
 }
 
-/** An error answer, said for a person: Toskar's message, with what to do. */
-async function explain(resp: Response): Promise<string> {
+/** An error answer, said for a person: Toskar's message, with what to do, and its code. */
+async function explain(resp: Response): Promise<{ message: string; code: string }> {
   let message = `Toskar answered ${resp.status}`
   let code = ''
   try {
@@ -237,12 +242,16 @@ async function explain(resp: Response): Promise<string> {
   } catch {
     // Not JSON: the status says enough.
   }
+  return { message: said(message, code, resp.status), code }
+}
+
+function said(message: string, code: string, status: number): string {
   if (code === 'RAW_NOT_ALLOWED') {
     return `${message}. For the model picker, connect again with Toskar: Connect to Another Computer, using a code an Admin or the Owner shows. With an API key, turn on "Drive models directly, for coding agents" for it in API Access.`
   }
   // Connecting's own errors say what to do.
   if (code.startsWith('PAIRING_')) return message.charAt(0).toUpperCase() + message.slice(1) + '.'
 
-  if (resp.status === 401) return `${message}. Connect with the code from Toskar's Connect a device: run Toskar: Connect to Another Computer.`
+  if (status === 401) return `${message}. Connect with the code from Toskar's Connect a device: run Toskar: Connect to Another Computer.`
   return message
 }

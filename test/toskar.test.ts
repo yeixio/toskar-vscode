@@ -70,6 +70,7 @@ describe('Toskar', () => {
     expect(err).toBeInstanceOf(ToskarError)
     expect(err.message).toContain('Drive models directly, for coding agents')
     expect(err.status).toBe(403)
+    expect(err.code).toBe('RAW_NOT_ALLOWED')
   })
 
   it("asks Toskar's assistant in a new chat, marked as from an editor", async () => {
